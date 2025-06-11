@@ -1,9 +1,7 @@
+const { verifyToken } = require('../utils/jwt');
 
-const jwt = require('../utils/jwt');
-
-module.exports = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
@@ -11,10 +9,12 @@ module.exports = (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verifyToken(token);
+    const decoded = verifyToken(token);
     req.user = decoded;
     next();
   } catch (err) {
-    res.status(401).json({ message: 'Invalid or expired token' });
+    return res.status(401).json({ message: 'Token is invalid or expired' });
   }
 };
+
+module.exports = authMiddleware;

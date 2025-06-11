@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+
+      if (token) {
+        chrome.storage.local.set({ token }, () => {
+          window.close(); // close after saving
+        });
+      }
+    </script>
+  </body>
+</html>

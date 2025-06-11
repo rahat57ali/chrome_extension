@@ -1,7 +1,58 @@
-
+// controllers/authController.js
 const bcrypt = require('bcrypt');
 const { poolConnect, sql, pool } = require('../db/mssql');
+const { google } = require('googleapis');
 const jwt = require('../utils/jwt');
+
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
+
+exports.googleAuth = (req, res) => {
+  const url = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: ['profile', 'email'],
+  });
+  res.redirect(url);
+};
+
+exports.googleCallback = async (req, res) => {
+  const { code } = req.query;
+  const { tokens } = await oauth2Client.getToken(code);
+  oauth2Client.setCredentials(tokens);
+
+  const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+  const userInfo = await oauth2.userinfo.get();
+
+  const email = userInfo.data.email;
+
+  await poolConnect;
+  const request = pool.request();
+  let result = await request
+    .input('email', sql.NVarChar, email)
+    .query('SELECT * FROM users WHERE email = @email');
+
+  // Create if not exists
+  if (result.recordset.length === 0) {
+    await request
+      .input('email', sql.NVarChar, email)
+      .input('provider', sql.NVarChar, 'google')
+      .query(`INSERT INTO users (email, provider) VALUES (@email, @provider)`);
+
+    result = await request
+      .input('email', sql.NVarChar, email)
+      .query('SELECT * FROM users WHERE email = @email');
+  }
+
+  const user = result.recordset[0];
+  const token = jwt.generateToken({ id: user.id, email: user.email, role: user.role });
+
+  // Send token to extension via redirect
+  res.redirect(`chrome-extension://${EXTENSION_ID}/oauth.html?token=${token}`);
+};
+
 
 exports.signup = async (req, res) => {
   const { email, password, role } = req.body;
@@ -10,7 +61,8 @@ exports.signup = async (req, res) => {
     const request = pool.request();
 
     // Check if user exists
-    const result = await request
+    const checkRequest = pool.request();
+    const result = await checkRequest
       .input('email', sql.NVarChar, email)
       .query('SELECT * FROM users WHERE email = @email');
 
@@ -20,7 +72,9 @@ exports.signup = async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 10);
 
-    await request
+    //Insert new user
+    const insertRequest = pool.request();
+    await insertRequest
       .input('email', sql.NVarChar, email)
       .input('password_hash', sql.NVarChar, password_hash)
       .input('role', sql.NVarChar, role || 'user')

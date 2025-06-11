@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Auth Extension",
+  "version": "1.0",
+  "description": "Login with backend auth",
+  "permissions": ["storage"],
+  "host_permissions": ["http://localhost:5000/"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon.png"
+    }
+  },
+  "web_accessible_resources": [{
+    "resources": ["oauth-success.html"],
+    "matches": ["<all_urls>"]
+  }]
+}

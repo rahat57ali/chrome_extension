@@ -1,9 +1,11 @@
-
+// db/mssql.js
 const sql = require('mssql');
 require('dotenv').config();
-console.log('DB_SERVER:', process.env.DB_SERVER);
-console.log('DB_User:', process.env.DB_USER);
-console.log('DB_Pasword:', process.env.DB_PASSWORD);
+console.log(process.env.DB_USER);
+console.log(process.env.DB_PASSWORD);
+console.log(process.env.DB_SERVER);
+console.log(process.env.DB_DATABASE);
+
 
 const config = {
   user: process.env.DB_USER,
@@ -14,6 +16,7 @@ const config = {
     encrypt: false,
     trustServerCertificate: true,
     trustedConnection: true,
+    
   }
 };
 
