@@ -6,6 +6,8 @@
 </head>
 <body>
   <div class="container">
+    
+    <!-- Login Form -->
     <div id="login-form">
       <h2>Welcome Back</h2>
       <div class="input-group">
@@ -19,13 +21,16 @@
       <div id="message"></div>
     </div>
     
+    <!-- profile -->
     <div id="profile" style="display: none;">
       <h3>Welcome back!</h3>
       <p><strong id="user-email"></strong></p>
       <p>Role: <span id="user-role"></span></p>
+      <button id="openAdminBtn" style="display: none;">Open Super Admin Panel</button>
       <button id="logout">Sign Out</button>
     </div>
 
+    <!-- Admin Controls (for admin and superadmin) -->
     <div id="admin-panel" style="display: none;">
       <hr />
       <h4>Admin Controls</h4>

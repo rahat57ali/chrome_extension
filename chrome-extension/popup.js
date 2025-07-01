@@ -1,86 +1,76 @@
 const API_URL = 'http://localhost:5000/api/auth';
 
+document.addEventListener('DOMContentLoaded', () => {
+  setupGoogleLogin();
+  setupEmailLogin();
+  setupLogout();
+  showProfile();
+});
 
-document.getElementById('googleLoginBtn').addEventListener('click', () => {
-  const width = 500, height = 600;
-  const left = (screen.width - width) / 2;
-  const top = (screen.height - height) / 2;
+// ---- GOOGLE LOGIN ----
+function setupGoogleLogin() {
+  document.getElementById('googleLoginBtn').addEventListener('click', () => {
+    const width = 500, height = 600;
+    const left = (screen.width - width) / 2;
+    const top = (screen.height - height) / 2;
 
-  const popup = window.open(
-    'http://localhost:5000/api/auth/google',
-    'Google Login',
-    `width=${width},height=${height},top=${top},left=${left}`
-  );
+    const popup = window.open(
+      'http://localhost:5000/api/auth/google',
+      'Google Login',
+      `width=${width},height=${height},top=${top},left=${left}`
+    );
 
-  const checkPopupClosed = setInterval(() => {
-    if (popup.closed) {
-      clearInterval(checkPopupClosed);
+    const checkPopupClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkPopupClosed);
 
-      // Check if token is stored
-      chrome.storage.local.get(['token'], (result) => {
-        const token = result.token;
-        if (token) {
-          fetch('http://localhost:5000/api/auth/profile', {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          })
-          .then(res => res.json())
-          .then(data => {
-            console.log('User data:', data);
-            showProfile(); // updates the UI
-          })
-          .catch(err => console.error('Profile fetch error:', err));
-        }
+        chrome.storage.local.get(['token'], ({ token }) => {
+          if (token) showProfile();
+        });
+      }
+    }, 500);
+  });
+}
+
+// ---- EMAIL LOGIN ----
+function setupEmailLogin() {
+  document.getElementById('login-btn').addEventListener('click', async () => {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const message = document.getElementById('message');
+
+    if (!email || !password) return (message.textContent = 'Email and password are required.');
+
+    try {
+      const res = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
       });
 
+      const data = await res.json();
+      if (!res.ok) return (message.textContent = data.message);
+
+      chrome.storage.local.set({ token: data.token }, () => {
+        showProfile();
+      });
+    } catch (err) {
+      message.textContent = 'Something went wrong. Please try again.';
+      console.error('Login error:', err);
     }
-  }, 500);
-});
-
-
-
-
-document.getElementById('login-btn').addEventListener('click', async () => {
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value.trim();
-  const message = document.getElementById('message');
-
-  if (!email || !password) return (message.textContent = 'Email and password are required.');
-
-  try {
-    const res = await fetch(`${API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-
-    const data = await res.json();
-    if (!res.ok) return (message.textContent = data.message);
-
-    // Save token
-    chrome.storage.local.set({ token: data.token }, () => {
-      showProfile();
-    });
-  } catch (err) {
-   message.textContent = 'Something went wrong. Please check your credentials or try again.';
-  console.error('Login failed:', err);
-  }
-});
-
-document.getElementById('logout').addEventListener('click', () => {
-  chrome.storage.local.remove('token', () => {
-    // alert('Logged out successfully!');
-    location.reload();
   });
-});
+}
 
-document.getElementById('admin-btn').addEventListener('click', () => {
-  alert('Redirecting to admin dashboard...');
-  // Or open a page in new tab: chrome.tabs.create({ url: '...' });
-});
+// ---- LOGOUT ----
+function setupLogout() {
+  document.getElementById('logout').addEventListener('click', () => {
+    chrome.storage.local.remove('token', () => {
+      location.reload();
+    });
+  });
+}
 
+// ---- SHOW PROFILE AND ADMIN CONTROLS ----
 async function showProfile() {
   chrome.storage.local.get('token', async ({ token }) => {
     if (!token) return;
@@ -93,22 +83,28 @@ async function showProfile() {
       const data = await res.json();
       if (!res.ok) throw new Error();
 
-      document.getElementById('user-email').textContent = data.user.email;
-      document.getElementById('user-role').textContent = data.user.role;
+      const user = data.user;
+      document.getElementById('user-email').textContent = user.email;
+      document.getElementById('user-role').textContent = user.role;
       document.getElementById('login-form').style.display = 'none';
       document.getElementById('profile').style.display = 'block';
-      // Show admin panel if role is admin
-      if (data.user.role === 'admin') {
+
+      // Show admin panel for 'admin' or 'superadmin'
+      if (user.role === 'admin' || user.role === 'superAdmin') {
         document.getElementById('admin-panel').style.display = 'block';
-      } else {
-        document.getElementById('admin-panel').style.display = 'none';
+      }
+
+      // Show SuperAdmin panel button only for superadmin
+      if (user.role === 'superAdmin') {
+        const btn = document.getElementById('openAdminBtn');
+        btn.style.display = 'block';
+        btn.addEventListener('click', () => {
+          chrome.tabs.create({ url: chrome.runtime.getURL('superAdmin.html') });
+        });
       }
     } catch (err) {
-      console.log('Token expired or invalid, logging out...');
+      console.log('Invalid/expired token, logging out...');
       chrome.storage.local.remove('token');
     }
   });
 }
-
-// Run on popup load
-document.addEventListener('DOMContentLoaded', showProfile);

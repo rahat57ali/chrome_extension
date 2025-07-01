@@ -3,7 +3,7 @@
   "name": "Auth Extension",
   "version": "1.0",
   "description": "Login with backend auth",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": ["http://localhost:5000/"],
   "action": {
     "default_popup": "popup.html",
@@ -12,7 +12,7 @@
     }
   },
   "web_accessible_resources": [{
-    "resources": ["oauth-success.html"],
+    "resources": ["oauth-success.html","superAdmin.html", "superAdmin.js"],
     "matches": ["<all_urls>"]
   }]
 }
